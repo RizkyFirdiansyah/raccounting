@@ -5,7 +5,6 @@ namespace Database\Factories;
 use App\Enums\TransactionType;
 use App\Models\Account;
 use App\Models\Category;
-use App\Models\Item;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -32,7 +31,7 @@ class TransactionFactory extends Factory
             'account_id' => Account::factory(),
             'target_account_id' => $type === TransactionType::Transfer ? Account::factory() : null,
             'category_id' => Category::factory(),
-            'item_id' => Item::factory(),
+            'item_id' => null,
             'target_item_id' => null,
             'type' => $type,
             'amount' => fake()->randomFloat(2, 10000, 1000000),
