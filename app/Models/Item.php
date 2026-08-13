@@ -18,6 +18,7 @@ class Item extends Model
     protected $fillable = [
         'category_id',
         'user_id',
+        'account_id',
         'name',
         'target_amount',
         'current_amount',
@@ -55,6 +56,14 @@ class Item extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * @return BelongsTo<Account, $this>
+     */
+    public function account(): BelongsTo
+    {
+        return $this->belongsTo(Account::class);
     }
 
     /**

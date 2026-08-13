@@ -3,7 +3,7 @@
     <button 
         wire:click="openModal"
         type="button" 
-        class="fixed bottom-6 right-6 z-40 flex items-center justify-center w-14 h-14 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white rounded-full shadow-lg hover:shadow-xl transform active:scale-95 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-emerald-300"
+        class="fixed bottom-6 right-6 z-40 flex items-center justify-center w-14 h-14 bg-linear-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white rounded-full shadow-lg hover:shadow-xl transform active:scale-95 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-emerald-300"
         aria-label="Tambah Transaksi Cepat"
         id="fab-fast-entry"
     >
@@ -153,78 +153,161 @@
                             @error('transaction_date') <span class="text-xs text-rose-500 mt-1 block">{{ $message }}</span> @enderror
                         </div>
 
-                        {{-- Category & Cascading Item --}}
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">
-                                    Kategori
-                                </label>
-                                <select 
-                                    wire:model.live="category_id"
-                                    class="w-full text-sm text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
-                                >
-                                    <option value="">-- Pilih Kategori --</option>
-                                    @foreach($categories as $cat)
-                                        <option value="{{ $cat->id }}">{{ $cat->name }}</option>
-                                    @endforeach
-                                </select>
-                                @error('category_id') <span class="text-xs text-rose-500 mt-1 block">{{ $message }}</span> @enderror
-                            </div>
-
-                            <div>
-                                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">
-                                    Item / Sinking Fund
-                                </label>
-                                <select 
-                                    wire:model.live="item_id"
-                                    class="w-full text-sm text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all disabled:opacity-50 disabled:bg-slate-100"
-                                    @if(!$category_id) disabled @endif
-                                >
-                                    <option value="">-- {{ $category_id ? 'Pilih Item' : 'Pilih Kategori Dulu' }} --</option>
-                                    @foreach($availableItems as $item)
-                                        <option value="{{ $item->id }}">{{ $item->name }}</option>
-                                    @endforeach
-                                </select>
-                                @error('item_id') <span class="text-xs text-rose-500 mt-1 block">{{ $message }}</span> @enderror
-                            </div>
-                        </div>
-
-                        {{-- Payment Account / Source Account --}}
-                        <div>
-                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">
-                                {{ $type === 'transfer' ? 'Dompet Asal' : 'Akun Pembayaran / Dompet' }}
-                            </label>
-                            <select 
-                                wire:model.live="account_id"
-                                class="w-full text-sm text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
-                            >
-                                <option value="">-- Pilih Akun / Dompet --</option>
-                                @foreach($accounts as $acc)
-                                    <option value="{{ $acc->id }}">{{ $acc->name }} ({{ $acc->type->label() }})</option>
-                                @endforeach
-                            </select>
-                            @error('account_id') <span class="text-xs text-rose-500 mt-1 block">{{ $message }}</span> @enderror
-                        </div>
-
-                        {{-- Target Account (Transfer Only) --}}
+                        {{-- OPSI 1: JIKA JENIS TRANSAKSI ADALAH TRANSFER --}}
                         @if($type === 'transfer')
+
+                            {{-- Radio / Tab Toggle Target Transfer --}}
+                            <div>
+                                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
+                                    Tujuan Transfer
+                                </label>
+                                <div class="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl">
+                                    <button 
+                                        type="button" 
+                                        wire:click="$set('transfer_target_type', 'account')"
+                                        class="py-2 text-xs font-medium rounded-lg transition-all {{ $transfer_target_type === 'account' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700' }}"
+                                    >
+                                        Antar Dompet
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        wire:click="$set('transfer_target_type', 'sinking_fund')"
+                                        class="py-2 text-xs font-medium rounded-lg transition-all {{ $transfer_target_type === 'sinking_fund' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700' }}"
+                                    >
+                                        Alokasi Sinking Fund
+                                    </button>
+                                </div>
+                            </div>
+
+                            {{-- Dompet Asal (Source Account) --}}
                             <div>
                                 <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">
-                                    Dompet Tujuan
+                                    Dompet Asal
                                 </label>
                                 <select 
-                                    wire:model.live="target_account_id"
+                                    wire:model.live="account_id"
                                     class="w-full text-sm text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
                                 >
-                                    <option value="">-- Pilih Dompet Tujuan --</option>
+                                    <option value="">-- Pilih Dompet Asal --</option>
                                     @foreach($accounts as $acc)
-                                        @if($acc->id !== $account_id)
-                                            <option value="{{ $acc->id }}">{{ $acc->name }} ({{ $acc->type->label() }})</option>
-                                        @endif
+                                        <option value="{{ $acc->id }}">{{ $acc->name }} ({{ $acc->type->label() }})</option>
                                     @endforeach
                                 </select>
-                                @error('target_account_id') <span class="text-xs text-rose-500 mt-1 block">{{ $message }}</span> @enderror
+                                @error('account_id') <span class="text-xs text-rose-500 mt-1 block">{{ $message }}</span> @enderror
                             </div>
+
+                            {{-- CONDITIONAL TARGET 1: ANTAR DOMPET --}}
+                            @if($transfer_target_type === 'account')
+                                <div>
+                                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">
+                                        Dompet Tujuan
+                                    </label>
+                                    <select 
+                                        wire:model.live="target_account_id"
+                                        class="w-full text-sm text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                                    >
+                                        <option value="">-- Pilih Dompet Tujuan --</option>
+                                        @foreach($accounts as $acc)
+                                            @if($acc->id !== (int)$account_id)
+                                                <option value="{{ $acc->id }}">{{ $acc->name }} ({{ $acc->type->label() }})</option>
+                                            @endif
+                                        @endforeach
+                                    </select>
+                                    @error('target_account_id') <span class="text-xs text-rose-500 mt-1 block">{{ $message }}</span> @enderror
+                                </div>
+
+                            {{-- CONDITIONAL TARGET 2: SINKING FUND / TARGET ITEM --}}
+                            @else
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">
+                                            Kategori Target
+                                        </label>
+                                        <select 
+                                            wire:model.live="category_id"
+                                            class="w-full text-sm text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                                        >
+                                            <option value="">-- Pilih Kategori --</option>
+                                            @foreach($categories as $cat)
+                                                <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+                                            @endforeach
+                                        </select>
+                                        @error('category_id') <span class="text-xs text-rose-500 mt-1 block">{{ $message }}</span> @enderror
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">
+                                            Target Item / Sinking Fund
+                                        </label>
+                                        <select 
+                                            wire:model.live="target_item_id"
+                                            class="w-full text-sm text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all disabled:opacity-50 disabled:bg-slate-100"
+                                            @if(!$category_id) disabled @endif
+                                        >
+                                            <option value="">-- {{ $category_id ? 'Pilih Item Tujuan' : 'Pilih Kategori Dulu' }} --</option>
+                                            @foreach($availableItems as $item)
+                                                <option value="{{ $item->id }}">{{ $item->name }}</option>
+                                            @endforeach
+                                        </select>
+                                        @error('target_item_id') <span class="text-xs text-rose-500 mt-1 block">{{ $message }}</span> @enderror
+                                    </div>
+                                </div>
+                            @endif
+
+                        {{-- OPSI 2: JIKA JENIS TRANSAKSI PEMASUKAN / PENGELUARAN  --}}
+                        @else
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">
+                                        Kategori
+                                    </label>
+                                    <select 
+                                        wire:model.live="category_id"
+                                        class="w-full text-sm text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                                    >
+                                        <option value="">-- Pilih Kategori --</option>
+                                        @foreach($categories as $cat)
+                                            <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    @error('category_id') <span class="text-xs text-rose-500 mt-1 block">{{ $message }}</span> @enderror
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">
+                                        Item / Sinking Fund
+                                    </label>
+                                    <select 
+                                        wire:model.live="item_id"
+                                        class="w-full text-sm text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all disabled:opacity-50 disabled:bg-slate-100"
+                                        @if(!$category_id) disabled @endif
+                                    >
+                                        <option value="">-- {{ $category_id ? 'Pilih Item' : 'Pilih Kategori Dulu' }} --</option>
+                                        @foreach($availableItems as $item)
+                                            <option value="{{ $item->id }}">{{ $item->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    @error('item_id') <span class="text-xs text-rose-500 mt-1 block">{{ $message }}</span> @enderror
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">
+                                    Akun Pembayaran / Dompet
+                                </label>
+                                <select 
+                                    wire:model.live="account_id"
+                                    class="w-full text-sm text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                                >
+                                    <option value="">-- Pilih Akun / Dompet --</option>
+                                    @foreach($accounts as $acc)
+                                        <option value="{{ $acc->id }}">{{ $acc->name }} ({{ $acc->type->label() }})</option>
+                                    @endforeach
+                                </select>
+                                @error('account_id') <span class="text-xs text-rose-500 mt-1 block">{{ $message }}</span> @enderror
+                            </div>
+
                         @endif
 
                         {{-- Notes --}}
@@ -252,7 +335,7 @@
                             </button>
                             <button 
                                 type="submit" 
-                                class="w-1/2 sm:w-auto px-6 py-3 text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 rounded-xl shadow-md hover:shadow-lg active:scale-95 transition-all text-center"
+                                class="w-1/2 sm:w-auto px-6 py-3 text-xs sm:text-sm font-bold text-white bg-linear-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 rounded-xl shadow-md hover:shadow-lg active:scale-95 transition-all text-center"
                             >
                                 Simpan Transaksi
                             </button>

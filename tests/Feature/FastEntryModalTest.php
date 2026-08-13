@@ -9,6 +9,7 @@ use App\Models\Category;
 use App\Models\Item;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\FinancialCalculatorService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 
@@ -38,30 +39,53 @@ test('changing category cascades available items and resets selected item_id', f
         ->assertSet('item_id', null);
 });
 
-test('validation requires account_id amount and target_account_id for transfer', function () {
+test('validation requires transfer destination and blocks insufficient source balance', function () {
     $account = Account::factory()->create();
+    $targetAccount = Account::factory()->create();
+    $category = Category::factory()->create();
+    $item = Item::factory()->create(['category_id' => $category->id]);
 
     // 1. Missing account & amount
     Livewire::test(FastEntryModal::class)
-        ->call('save')
-        ->assertHasErrors(['account_id', 'amount']);
+        ->call('openModal')
+        ->call('save');
 
-    // 2. Transfer missing target_account_id
+    expect(Transaction::count())->toBe(0);
+
+    // 2. Transfer missing destination
     Livewire::test(FastEntryModal::class)
+        ->call('openModal')
         ->set('type', TransactionType::Transfer->value)
         ->set('account_id', $account->id)
         ->set('amount', 'Rp 100.000')
-        ->call('save')
-        ->assertHasErrors(['target_account_id']);
+        ->call('save');
+
+    expect(Transaction::count())->toBe(0);
 
     // 3. Transfer with same account_id and target_account_id
     Livewire::test(FastEntryModal::class)
+        ->call('openModal')
         ->set('type', TransactionType::Transfer->value)
         ->set('account_id', $account->id)
         ->set('target_account_id', $account->id)
         ->set('amount', 'Rp 100.000')
-        ->call('save')
-        ->assertHasErrors(['target_account_id']);
+        ->call('save');
+
+    expect(Transaction::count())->toBe(0);
+
+    // 4. Transfer to sinking fund item with insufficient balance
+    $this->actingAs(User::factory()->create());
+
+    Livewire::test(FastEntryModal::class)
+        ->call('openModal')
+        ->set('type', TransactionType::Transfer->value)
+        ->set('account_id', $targetAccount->id)
+        ->set('category_id', $category->id)
+        ->set('target_item_id', $item->id)
+        ->set('amount', 'Rp 999.999')
+        ->call('save');
+
+    expect(Transaction::count())->toBe(0);
 });
 
 test('successful transaction creation sanitizes currency input and updates item status', function () {
@@ -105,4 +129,51 @@ test('successful transaction creation sanitizes currency input and updates item 
     $item->refresh();
     expect((float) $item->current_amount)->toEqual(500000.0)
         ->and($item->status)->toBe(ItemStatus::Terpenuhi);
+});
+
+test('transfer to a sinking fund item allocates existing account balance and fulfills the item', function () {
+    $user = User::factory()->create();
+    $this->actingAs($user);
+
+    $category = Category::factory()->create(['user_id' => $user->id]);
+    $item = Item::factory()->create([
+        'category_id' => $category->id,
+        'user_id' => $user->id,
+        'target_amount' => 300000,
+        'current_amount' => 0,
+        'status' => ItemStatus::Belum,
+    ]);
+
+    $sourceAccount = Account::factory()->create([
+        'user_id' => $user->id,
+        'type' => AccountType::Bank,
+        'initial_balance' => 500000,
+        'current_balance' => 500000,
+    ]);
+
+    Livewire::test(FastEntryModal::class)
+        ->call('openModal')
+        ->set('transaction_date', '2026-08-12')
+        ->set('type', TransactionType::Transfer->value)
+        ->set('category_id', $category->id)
+        ->set('target_item_id', $item->id)
+        ->set('account_id', $sourceAccount->id)
+        ->set('amount', 'Rp 300.000')
+        ->call('save')
+        ->assertHasNoErrors()
+        ->assertSet('isOpen', false);
+
+    expect(Transaction::count())->toBe(1);
+
+    $transaction = Transaction::first();
+    expect($transaction->type)->toBe(TransactionType::Transfer)
+        ->and($transaction->target_item_id)->toBe($item->id)
+        ->and($transaction->target_account_id)->toBeNull();
+
+    $item->refresh();
+    expect((float) $item->current_amount)->toEqual(300000.0)
+        ->and($item->status)->toBe(ItemStatus::Terpenuhi);
+
+    $balance = app(FinancialCalculatorService::class)->getRealAccountBalance($sourceAccount);
+    expect($balance)->toEqual(200000.0);
 });

@@ -15,13 +15,11 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        User::firstOrCreate(
-            ['email' => 'test@example.com'],
-            [
-                'name' => 'Test User',
-                'password' => bcrypt('password'),
-            ]
-        );
+        User::factory()->create([
+            'name' => 'Tes',
+            'email' => 'admin@gmail.com',
+            'password' => bcrypt('password123'),
+        ]);
 
         $this->call([
             CategorySeeder::class,
